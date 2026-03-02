@@ -15,15 +15,21 @@ try {
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Root element not found');
 
+function ErrorFallback({ error }) {
+  return (
+    <div style={{ padding: 40, fontFamily: 'system-ui', color: '#EF4444', textAlign: 'center' }}>
+      <h2>Something went wrong.</h2>
+      <p style={{ fontSize: 14, color: '#999', margin: '12px 0' }}>
+        {error?.message || 'Unknown error'}
+      </p>
+      <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', marginTop: 16 }}>Reload</button>
+    </div>
+  );
+}
+
 createRoot(rootEl).render(
   <StrictMode>
-    <ErrorBoundary fallback={
-      <div style={{ padding: 40, fontFamily: 'system-ui', color: '#EF4444', textAlign: 'center' }}>
-        <h2>Something went wrong.</h2>
-        <p>The application crashed unexpectedly. Please reload the page.</p>
-        <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', marginTop: 16 }}>Reload</button>
-      </div>
-    }>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <AuthProvider>
         <App />
       </AuthProvider>
