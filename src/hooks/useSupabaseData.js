@@ -410,7 +410,9 @@ export function useTaskHistory() {
     async (taskId, taskName, startedAt, completedAt) => {
       if (!user) return { error: new Error('Not authenticated') };
 
-      const completionDate = new Date(completedAt).toISOString().split('T')[0];
+      const d = new Date(completedAt);
+      const pad = (n) => n.toString().padStart(2, "0");
+      const completionDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
       const { data, error } = await supabase
         .from('task_history')

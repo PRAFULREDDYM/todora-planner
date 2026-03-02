@@ -51,7 +51,7 @@ const useTheme = () => useContext(ThemeContext);
 /* ══════════════════════════════════════════
    UTILS
 ══════════════════════════════════════════ */
-const todayStr = () => {
+export const todayStr = () => {
   const d = new Date();
   const pad = (n) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -1362,6 +1362,98 @@ function TaskSheet({ task, onSave, onClose, isWearable, isMobile }) {
 }
 
 /* ══════════════════════════════════════════
+   CONFIRM DIALOG (Custom modal to replace window.confirm)
+   ══════════════════════════════════════════ */
+function ConfirmDialog({ title, message, onConfirm, onCancel }) {
+  const { C } = useTheme();
+
+  const modalContent = (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        background: "rgba(0,0,0,0.4)",
+        backdropFilter: "blur(4px)",
+      }}
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: C.surface,
+          borderRadius: 24,
+          padding: "32px",
+          width: "100%",
+          maxWidth: 400,
+          boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+          textAlign: "center",
+        }}
+      >
+        <div style={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "rgba(239,68,68,0.1)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 20px",
+          color: C.danger
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+        </div>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 12 }}>{title}</h3>
+        <p style={{ fontSize: 15, color: C.textMid, lineHeight: 1.5, marginBottom: 32 }}>{message}</p>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              padding: "14px",
+              borderRadius: 14,
+              background: C.surfaceHi,
+              color: C.text,
+              border: "none",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              padding: "14px",
+              borderRadius: 14,
+              background: C.danger,
+              color: "#FFF",
+              border: "none",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 8px 16px rgba(239,68,68,0.2)",
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+
+  return createPortal(modalContent, document.body);
+}
+
+/* ══════════════════════════════════════════
    TASK CARD
 ══════════════════════════════════════════ */
 function TaskCard({
@@ -1375,6 +1467,9 @@ function TaskCard({
   onStart,
   onStop,
   onToggleStar,
+  onReset,
+  onPause,
+  onResume,
   isSelectMode,
   isSelected,
   onSelect,
@@ -1438,10 +1533,12 @@ function TaskCard({
         )}
         <button
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             onToggle();
           }}
           style={{
+            zIndex: 5,
             width: 24,
             height: 24,
             borderRadius: "50%",
@@ -1751,10 +1848,77 @@ function TaskCard({
             >
               Edit
             </button>
+
+            {liveMs > 0 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    isRunning ? onPause() : onResume();
+                  }}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    background: isRunning ? C.surfaceHi : C.accent,
+                    color: isRunning ? C.text : "#FFF",
+                    border: "none",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {isRunning ? (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      Resume
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReset();
+                  }}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    background: C.surfaceHi,
+                    color: C.text,
+                    border: "none",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                  title="Reset timer"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
+                  Reset
+                </button>
+              </>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm("Delete this task?")) onDelete();
+                onDelete();
               }}
               style={{
                 padding: "8px 16px",
@@ -1770,9 +1934,10 @@ function TaskCard({
               Delete
             </button>
           </div>
-        )}
-      </AnimatePresence>
-    </div>
+        )
+        }
+      </AnimatePresence >
+    </div >
   );
 }
 
@@ -1798,6 +1963,9 @@ function HomeScreen({
   setTab,
   setShowSheet,
   setEditTask,
+  onPause,
+  onResume,
+  onReset,
 }) {
   const { C, isDark } = useTheme();
   const [selectedIds, setSelectedIds] = useState([]);
@@ -2244,6 +2412,9 @@ function HomeScreen({
               isSelectMode={isMultiSelect}
               isSelected={selectedIds.includes(task.id)}
               onSelect={() => toggleSelect(task.id)}
+              onPause={() => onPause(task.id)}
+              onResume={() => onResume(task.id)}
+              onReset={() => onReset(task.id)}
             />
           </Reorder.Item>
         ))}
@@ -2381,6 +2552,9 @@ function HomeScreen({
                 onStart={() => onStart(task.id)}
                 onStop={() => onStop(task.id)}
                 onToggleStar={() => onToggleStar(task.id)}
+                onPause={() => onPause(task.id)}
+                onResume={() => onResume(task.id)}
+                onReset={() => onReset(task.id)}
               />
             );
           })}
@@ -3037,6 +3211,7 @@ function AppContent() {
 
   const [showSheet, setShowSheet] = useState(false);
   const [editTask, setEditTask] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   // Persist theme changes to profile
   const handleToggleTheme = useCallback(async () => {
@@ -3061,6 +3236,7 @@ function AppContent() {
   // UI State — history-aware tab management
   const [tab, setTab] = useState("today");
   const [timers, setTimers] = useState({});
+  const [accumulatedMs, setAccumulatedMs] = useState({});
   const [liveTime, setLiveTime] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState(null);
@@ -3131,27 +3307,37 @@ function AppContent() {
   }, [tasks, timers, updateTask]);
 
   useEffect(() => {
-    const ids = Object.keys(timers);
+    const ids = Array.from(new Set([...Object.keys(timers), ...Object.keys(accumulatedMs)]));
     if (!ids.length) return;
     const iv = setInterval(() => {
       const now = Date.now();
       setLiveTime((p) => {
         const n = { ...p };
         ids.forEach((id) => {
-          n[id] = now - timers[id];
+          const acc = accumulatedMs[id] || 0;
+          const start = timers[id];
+          n[id] = acc + (start ? now - start : 0);
         });
         return n;
       });
     }, 500);
     return () => clearInterval(iv);
-  }, [timers]);
+  }, [timers, accumulatedMs]);
 
   const TODAY = todayStr();
   const toggleTask = useCallback(
     async (task) => {
       const ents = history[TODAY] || [];
       const isDone = ents.some((e) => e.id === task.id);
+
+      const totalMs = liveTime[task.id] || 0;
+
       setTimers((p) => {
+        const n = { ...p };
+        delete n[task.id];
+        return n;
+      });
+      setAccumulatedMs((p) => {
         const n = { ...p };
         delete n[task.id];
         return n;
@@ -3164,8 +3350,8 @@ function AppContent() {
           if (error) showToast("Failed to update task status. Please try again.");
         }
       } else {
-        const startedAt = timers[task.id] || Date.now() - 500;
         const completedAt = Date.now();
+        const startedAt = completedAt - Math.max(500, totalMs);
         const { error } = await addHistoryEntry(task.id, task.name, startedAt, completedAt);
         if (error) showToast("Failed to save task completion. Please try again.");
       }
@@ -3372,6 +3558,7 @@ function AppContent() {
             </div>
           </div>
         )}
+
         <div style={{ width: "100%", position: "relative", zIndex: 10 }}>
           {tab === "today" && (
             <HomeScreen
@@ -3381,18 +3568,45 @@ function AppContent() {
               liveTime={liveTime}
               searchQuery={searchQuery}
               onToggle={toggleTask}
-              onDelete={async (id) => {
-                const { error } = await deleteTask(id);
-                if (error) showToast("Failed to delete task. Please try again.");
-              }}
+              onDelete={(id) => setDeleteConfirmId(id)}
               onStart={(id) => setTimers((p) => ({ ...p, [id]: Date.now() }))}
-              onStop={(id) =>
+              onStop={(id) => {
                 setTimers((p) => {
                   const n = { ...p };
                   delete n[id];
                   return n;
-                })
-              }
+                });
+                setAccumulatedMs((p) => {
+                  const n = { ...p };
+                  delete n[id];
+                  return n;
+                });
+              }}
+              onPause={(id) => {
+                const start = timers[id];
+                if (start) {
+                  const diff = Date.now() - start;
+                  setAccumulatedMs((p) => ({ ...p, [id]: (p[id] || 0) + diff }));
+                  setTimers((p) => {
+                    const n = { ...p };
+                    delete n[id];
+                    return n;
+                  });
+                }
+              }}
+              onResume={(id) => setTimers((p) => ({ ...p, [id]: Date.now() }))}
+              onReset={(id) => {
+                setTimers((p) => {
+                  const n = { ...p };
+                  delete n[id];
+                  return n;
+                });
+                setAccumulatedMs((p) => {
+                  const n = { ...p };
+                  delete n[id];
+                  return n;
+                });
+              }}
               onReorder={onReorder}
               onToggleStar={async (id) => {
                 const task = tasks.find((t) => t.id === id);
@@ -3426,18 +3640,45 @@ function AppContent() {
             />
           )}
           {tab === "analytics" && <Analytics history={history} tasks={tasks} />}
-          {tab === "settings" && (
-            <SettingsView
-              userName={userName}
-              setUserName={setUserName}
-              C={C}
-              isDark={isDark}
-              onSignOut={signOut}
-              userEmail={user?.email}
+        </div>
+
+        <AnimatePresence>
+          {deleteConfirmId && (
+            <ConfirmDialog
+              title="Delete Task?"
+              message="Are you sure you want to permanently delete this task? This action cannot be undone."
+              onCancel={() => setDeleteConfirmId(null)}
+              onConfirm={async () => {
+                const id = deleteConfirmId;
+                setDeleteConfirmId(null);
+                const { error } = await deleteTask(id);
+                if (error) {
+                  showToast("Failed to delete task. Please try again.");
+                } else {
+                  showToast("Task deleted");
+                }
+              }}
             />
           )}
-        </div>
+        </AnimatePresence>
+
+        {tab === "settings" && (
+          <SettingsView
+            userName={userName}
+            setUserName={setUserName}
+            C={C}
+            isDark={isDark}
+            onSignOut={signOut}
+            userEmail={user?.email}
+          />
+        )}
       </div>
+
+      {isMobile && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+          <MobileNav tab={tab} setTab={navigateToTab} C={C} />
+        </div>
+      )}
 
       {showSheet && (
         <TaskSheet
