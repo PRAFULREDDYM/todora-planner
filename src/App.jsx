@@ -3184,7 +3184,9 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if ("Notification" in window) Notification.requestPermission();
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     const iv = setInterval(() => {
       const now = new Date();
       const canNotify = "Notification" in window && Notification.permission === "granted";
