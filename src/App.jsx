@@ -3578,7 +3578,7 @@ function AppContent() {
                   deleteNoteFromDb={deleteNote}
                 />
               )}
-              {tab === "stats" && (
+              {tab === "analytics" && (
                 <Analytics history={history} tasks={tasks} />
               )}
               {tab === "settings" && (
@@ -3616,7 +3616,7 @@ function AppContent() {
           </div>
 
           {isMobile && (
-            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, paddingBottom: "env(safe-area-inset-bottom)" }}>
               <Navigation tab={tab} setTab={navigateToTab} isMobile={true} C={C} />
             </div>
           )}
@@ -4843,12 +4843,12 @@ function PerformanceTiles({ history, tasks, period, getTodayStr }) {
 ══════════════════════════════════════════ */
 export function Analytics({ history, tasks }) {
   const { C, isDark } = useTheme();
+  const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
   const streak = useMemo(() => calcStreak(history), [history]);
   const best = useMemo(() => calcBestStreak(history), [history]);
   const totalDone = useMemo(() => Object.values(history).reduce((a, b) => a + b.length, 0), [history]);
   const totalTime = useMemo(() => calcTotalTime(history), [history]);
-
 
   const stats = [
     { label: "STREAK", val: `${streak}d`, g: C.accent },
@@ -4857,31 +4857,32 @@ export function Analytics({ history, tasks }) {
     { label: "TIME LOGGED", val: totalTime >= 60 ? `${Math.floor(totalTime / 60)}h ${totalTime % 60}m` : `${totalTime}m`, g: C.textMid }
   ];
 
+  const barCount = isMobile ? 21 : 40;
+
   return (
-    <div style={{ padding: 24, paddingBottom: 100 }}>
+    <div style={{ padding: isMobile ? 16 : 24, paddingBottom: 100 }}>
       {/* Top Cards */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        gap: 16,
-        marginBottom: 16
+        gap: isMobile ? 10 : 16,
+        marginBottom: isMobile ? 12 : 16
       }}>
         {stats.map((s, i) => (
           <div key={i} style={{
             background: C.surface,
-            borderRadius: 20,
-            padding: 24,
+            borderRadius: isMobile ? 16 : 20,
+            padding: isMobile ? 16 : 24,
             border: `1px solid ${C.border}`,
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            aspectRatio: "1/1"
           }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: s.g, fontFamily: "Inter, sans-serif" }}>
+            <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 800, color: s.g, fontFamily: "Inter, sans-serif" }}>
               {s.val === 0 || s.val === "0d" ? "—" : s.val}
             </div>
             <div style={{
-              fontSize: 10,
+              fontSize: isMobile ? 9 : 10,
               fontWeight: 700,
               color: C.textDim,
               letterSpacing: 1.5,
@@ -4897,10 +4898,10 @@ export function Analytics({ history, tasks }) {
       {/* Performance Tiles (Consistency Calendar) */}
       <div style={{
         background: C.surface,
-        borderRadius: 24,
-        padding: 24,
+        borderRadius: isMobile ? 16 : 24,
+        padding: isMobile ? 16 : 24,
         border: `1px solid ${C.border}`,
-        marginBottom: 24
+        marginBottom: isMobile ? 12 : 24
       }}>
         <PerformanceTiles history={history} tasks={tasks} period="month" />
       </div>
@@ -4908,16 +4909,16 @@ export function Analytics({ history, tasks }) {
       {/* Engagement Trend */}
       <div style={{
         background: C.surface,
-        borderRadius: 24,
-        padding: 24,
+        borderRadius: isMobile ? 16 : 24,
+        padding: isMobile ? 16 : 24,
         border: `1px solid ${C.border}`
       }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 4 }}>Engagement</div>
-        <div style={{ fontSize: 13, color: C.textDim, marginBottom: 20 }}>Daily activity trend</div>
+        <div style={{ fontSize: isMobile ? 16 : 18, fontWeight: 800, color: C.text, marginBottom: 4 }}>Engagement</div>
+        <div style={{ fontSize: isMobile ? 12 : 13, color: C.textDim, marginBottom: isMobile ? 12 : 20 }}>Daily activity trend</div>
 
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 100, paddingBottom: 8 }}>
-          {Array.from({ length: 40 }).map((_, i) => {
-            const d = new Date(); d.setDate(d.getDate() - (39 - i));
+        <div style={{ display: "flex", alignItems: "flex-end", gap: isMobile ? 2 : 3, height: isMobile ? 80 : 100, paddingBottom: 8 }}>
+          {Array.from({ length: barCount }).map((_, i) => {
+            const d = new Date(); d.setDate(d.getDate() - (barCount - 1 - i));
             const k = d.toISOString().split("T")[0];
             const count = (history[k] || []).length;
             const h = tasks.length > 0 ? (count / tasks.length) * 100 : 0;
@@ -4940,17 +4941,11 @@ export function Analytics({ history, tasks }) {
           {(() => {
             const markers = [];
             const now = new Date();
-            // Start (40 days ago)
-            const start = new Date(); start.setDate(now.getDate() - 39);
+            const start = new Date(); start.setDate(now.getDate() - (barCount - 1));
             markers.push(start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase());
-
-            // Middle marker (20 days ago)
-            const mid = new Date(); mid.setDate(now.getDate() - 20);
+            const mid = new Date(); mid.setDate(now.getDate() - Math.floor(barCount / 2));
             markers.push(mid.toLocaleDateString('en-US', { month: 'short' }).toUpperCase());
-
-            // End (Today)
             markers.push("TODAY");
-
             return markers.map((m, idx) => <span key={idx}>{m}</span>);
           })()}
         </div>
