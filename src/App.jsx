@@ -397,10 +397,13 @@ function calcTotalTime(history) {
 function Background() {
   const { C } = useTheme();
 
-  // Dark Mode Animated Background State & Effect
+  // Dark Mode Animated Background State & Effect — DESKTOP ONLY
   const [t, setT] = useState(0);
+  const [isMobileBg] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768
+  );
   useEffect(() => {
-    if (!C.isDark) return;
+    if (!C.isDark || isMobileBg) return;
     let raf,
       st = null;
     const loop = (ts) => {
@@ -410,9 +413,9 @@ function Background() {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [C.isDark]);
+  }, [C.isDark, isMobileBg]);
 
-  // On Desktop/Mobile light mode, the gradient is too intense. Simplify for light mode.
+  // Light mode — simple SVG gradient
   if (!C.isDark) {
     return (
       <div
@@ -440,6 +443,23 @@ function Background() {
     );
   }
 
+  // Mobile dark mode — simple static background (no animated SVG filters)
+  if (isMobileBg) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          overflow: "hidden",
+          background: C.bg,
+        }}
+      />
+    );
+  }
+
+  // Desktop dark mode — animated SVG gradients
   const s = Math.sin(t * Math.PI * 2),
     c = Math.cos(t * Math.PI * 2),
     s2 = Math.sin(t * Math.PI * 2 + 1.8);
@@ -478,19 +498,9 @@ function Background() {
             <stop offset="0%" stopColor="#1A152A" stopOpacity="0.4" />
             <stop offset="100%" stopColor="#1A152A" stopOpacity="0" />
           </radialGradient>
-          <filter id="nz">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.7"
-              numOctaves="3"
-              stitchTiles="stitch"
-            />
-            <feColorMatrix type="saturate" values="0" />
-          </filter>
         </defs>
         <rect width="100%" height="100%" fill="url(#rg1)" />
         <rect width="100%" height="100%" fill="url(#rg2)" />
-        <rect width="100%" height="100%" filter="url(#nz)" opacity="0.03" />
       </svg>
     </div>
   );
@@ -1150,6 +1160,24 @@ function TaskSheet({ task, onSave, onClose, isWearable, isMobile }) {
               Reminder Time
             </label>
             <TimeDrumPicker value={reminderAt} onChange={setReminderAt} />
+            {reminderAt && (
+              <button
+                onClick={() => setReminderAt("")}
+                style={{
+                  marginTop: 8,
+                  padding: "6px 14px",
+                  background: "none",
+                  border: `1px solid ${C.danger}40`,
+                  borderRadius: 8,
+                  color: C.danger,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                ✕ Remove Reminder
+              </button>
+            )}
           </div>
 
           <div style={{ marginBottom: 20 }}>

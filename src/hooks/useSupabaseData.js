@@ -156,8 +156,7 @@ export function useTasks() {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('[updateTask] Supabase error:', error);
-        console.error('[updateTask] taskId:', taskId, 'userId:', user.id, 'dbUpdates:', dbUpdates);
+        console.error('[updateTask] Error:', error.message);
       }
 
       if (!error) {
