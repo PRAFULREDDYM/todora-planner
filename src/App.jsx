@@ -82,6 +82,24 @@ const STORE = "momentum_v5";
 
 const pad = (n) => String(n).padStart(2, "0");
 const fmtDate = (s) => new Date(s + "T12:00:00");
+
+/* Pure utility — is a task scheduled/recurring on a given YYYY-MM-DD? */
+function isTaskOnDate(task, dateKey) {
+  if (!dateKey) return false;
+  if (task.deadline === dateKey) return true;
+  if (task.reminderAt && task.reminderAt.startsWith(dateKey)) return true;
+  if (!task.recurrence || task.recurrence === 'once') return false;
+  const d = new Date(dateKey + 'T12:00:00');
+  const day = d.getDay();
+  if (task.recurrence === 'daily') return true;
+  if (task.recurrence === 'weekdays') return day >= 1 && day <= 5;
+  if (task.recurrence === 'weekends') return day === 0 || day === 6;
+  if (task.recurrence === 'weekly') {
+    const startD = new Date((task.deadline || task.createdAt || dateKey) + 'T12:00:00');
+    return day === startD.getDay();
+  }
+  return false;
+}
 const MONTHS_S = [
   "Jan",
   "Feb",
@@ -697,7 +715,7 @@ function TimeDrumPicker({ value, onChange }) {
     if (np === "AM" && hr === 12) hr = 0;
     const ndId =
       dateOptions.find((opt) => opt.label === ndLabel)?.id ||
-      new Date().toISOString().split("T")[0];
+      new Date().toLocaleDateString('en-CA'); // Local ISO date
     onChange(`${ndId}T${String(hr).padStart(2, "0")}:${nm}:00`);
   };
 
@@ -1571,10 +1589,17 @@ function TaskCard({
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" />
                 </svg>
-                {new Date(task.reminderAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {(() => {
+                  // Parse as local time to avoid 8h shift
+                  const [d, t] = task.reminderAt.split('T');
+                  const [h, m] = t.split(':');
+                  const date = new Date();
+                  date.setHours(parseInt(h), parseInt(m));
+                  return date.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                })()}
               </div>
             )}
 
@@ -3134,18 +3159,26 @@ function AppContent() {
     if ("Notification" in window) Notification.requestPermission();
     const iv = setInterval(() => {
       const now = new Date();
+      const canNotify = "Notification" in window && Notification.permission === "granted";
+      const todayKey = todayStr();
       tasks.forEach((t) => {
-        if (t.reminderAt) {
-          const rd = new Date(t.reminderAt);
+        if (t.reminderAt && t.reminderAt.includes('T')) {
+          const [dPart, tPart] = t.reminderAt.split('T');
+          // Only fire if the reminder date matches today
+          if (dPart !== todayKey) return;
+          const [rh, rm] = tPart.split(':');
+          const rd = new Date();
+          rd.setHours(parseInt(rh), parseInt(rm), 0, 0);
+
           if (Math.abs(now - rd) < 30000) {
-            new Notification(`Reminder: ${t.name}`);
+            if (canNotify) new Notification(`Reminder: ${t.name}`);
             updateTask(t.id, { reminderAt: null });
           }
         }
         if (timers[t.id]) {
           const live = Date.now() - timers[t.id];
           if (t.goalMin > 0 && Math.abs(live - t.goalMin * 60000) < 1000) {
-            new Notification(`Session complete: ${t.name}`);
+            if (canNotify) new Notification(`Session complete: ${t.name}`);
           }
         }
       });
@@ -3249,8 +3282,13 @@ function AppContent() {
     return <AuthScreen theme={C} />;
   }
 
+  const showOnboarding = !profileLoading && !userName && user;
+
   // Show loading while data is being fetched
   const dataLoading = profileLoading || tasksLoading || notesLoading || historyLoading;
+
+  // isTaskOnDate is now a module-level pure function (see top of file)
+
   if (dataLoading) {
     return (
       <div
@@ -3291,264 +3329,289 @@ function AppContent() {
     : isMobile
       ? {
         background: C.bg,
-        minHeight: "100vh",
+        height: "100%",
         padding: "20px 20px 120px",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
       }
       : {
         background: C.bg,
-        minHeight: "100vh",
+        height: "100%",
         padding: "40px 40px 80px",
         marginLeft: 240,
         paddingRight: wid > 1200 ? 300 : 40,
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
       };
 
   return (
-    <div
-      style={{
-        fontFamily: "system-ui, -apple-system, sans-serif",
-        backgroundColor: isWearable ? "#000" : C.bg,
-        height: "100vh",
-        overflowY: "auto",
-        overflowX: "hidden",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {!isWearable && <Background />}
-      {!userName && <Onboarding onComplete={setUserName} C={C} isDark={isDark} />}
-
-      {/* Toast notification */}
-      {toast && (
+    <ErrorBoundary FallbackComponent={({ error }) => (
+      <div style={{ padding: 40, textAlign: 'center', background: C.bg, color: C.text, height: '100vh' }}>
+        <h2>Something went wrong</h2>
+        <p>{error.message}</p>
+        <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', borderRadius: 8, background: C.accent, color: '#fff', border: 'none' }}>
+          Reload Page
+        </button>
+      </div>
+    )}>
+      {showOnboarding ? (
+        <Onboarding
+          isDark={isDark}
+          C={C}
+          onComplete={(name) => {
+            setUserName(name);
+            setShowOnboarding(false);
+          }}
+        />
+      ) : (
         <div
+          id="app-root"
           style={{
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            backgroundColor: isWearable ? "#000" : C.bg,
+            height: "100dvh",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
             position: "fixed",
-            top: 20,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10000,
-            padding: "12px 24px",
-            borderRadius: 12,
-            background: toast.type === "error" ? C.danger : C.success,
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: 14,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-            animation: "slideDown 0.3s ease",
+            inset: 0,
           }}
         >
-          {toast.message}
-          <style>{`@keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
-        </div>
-      )}
+          {!isWearable && <Background />}
 
-      {!isWearable && (
-        <Navigation
-          tab={tab}
-          setTab={navigateToTab}
-          isMobile={isMobile}
-          isDark={isDark}
-          toggleTheme={handleToggleTheme}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          userEmail={user?.email}
-        />
-      )}
-
-      <div style={wrapStyle}>
-        {!isMobile && wid > 1200 && (
-          <div
-            style={{
-              position: "fixed",
-              right: 40,
-              top: 40,
-              width: 220,
-              zIndex: 10,
-            }}
-          >
+          {/* Toast notification */}
+          {toast && (
             <div
-              style={{ background: "transparent", padding: 0, border: "none" }}
+              style={{
+                position: "fixed",
+                top: 20,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 10000,
+                padding: "12px 24px",
+                borderRadius: 12,
+                background: toast.type === "error" ? C.danger : C.success,
+                color: "#fff",
+                fontWeight: 600,
+                fontSize: 14,
+                boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                animation: "slideDown 0.3s ease",
+              }}
             >
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: C.accent,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.5,
-                  marginBottom: 12,
-                }}
-              >
-                Pro Insight
-              </div>
-              <div
-                style={{
-                  fontSize: 15,
-                  color: C.text,
-                  lineHeight: 1.6,
-                  fontStyle: "italic",
-                  fontFamily: "'Georgia', serif",
-                }}
-              >
-                "{FAMOUS_QUOTES[quoteIndex].text}"
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: C.textDim,
-                  marginTop: 8,
-                  textAlign: "right",
-                  fontWeight: 600,
-                }}
-              >
-                — {FAMOUS_QUOTES[quoteIndex].author}
-              </div>
+              {toast.message}
+              <style>{`@keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
             </div>
-          </div>
-        )}
+          )}
 
-        <div style={{ width: "100%", position: "relative", zIndex: 10 }}>
-          {tab === "today" && (
-            <HomeScreen
-              tasks={tasks}
-              history={history}
-              timers={timers}
-              liveTime={liveTime}
+          {!isWearable && (
+            <Navigation
+              tab={tab}
+              setTab={navigateToTab}
+              isMobile={isMobile}
+              isDark={isDark}
+              toggleTheme={handleToggleTheme}
               searchQuery={searchQuery}
-              onToggle={toggleTask}
-              onDelete={(id) => setDeleteConfirmId(id)}
-              onStart={(id) => setTimers((p) => ({ ...p, [id]: Date.now() }))}
-              onStop={(id) => {
-                setTimers((p) => {
-                  const n = { ...p };
-                  delete n[id];
-                  return n;
-                });
-                setAccumulatedMs((p) => {
-                  const n = { ...p };
-                  delete n[id];
-                  return n;
-                });
-              }}
-              onPause={(id) => {
-                const start = timers[id];
-                if (start) {
-                  const diff = Date.now() - start;
-                  setAccumulatedMs((p) => ({ ...p, [id]: (p[id] || 0) + diff }));
-                  setTimers((p) => {
-                    const n = { ...p };
-                    delete n[id];
-                    return n;
-                  });
-                }
-              }}
-              onResume={(id) => setTimers((p) => ({ ...p, [id]: Date.now() }))}
-              onReset={(id) => {
-                setTimers((p) => {
-                  const n = { ...p };
-                  delete n[id];
-                  return n;
-                });
-                setAccumulatedMs((p) => {
-                  const n = { ...p };
-                  delete n[id];
-                  return n;
-                });
-              }}
-              onReorder={onReorder}
-              onToggleStar={async (id) => {
-                const task = tasks.find((t) => t.id === id);
-                if (task) {
-                  const { error } = await updateTask(id, { isStarred: !task.isStarred });
+              setSearchQuery={setSearchQuery}
+              userEmail={user?.email}
+            />
+          )}
+
+          <div style={wrapStyle}>
+            {!isMobile && wid > 1200 && (
+              <div
+                style={{
+                  position: "fixed",
+                  right: 40,
+                  top: 40,
+                  width: 220,
+                  zIndex: 10,
+                }}
+              >
+                <div
+                  style={{ background: "transparent", padding: 0, border: "none" }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: C.accent,
+                      textTransform: "uppercase",
+                      letterSpacing: 1.5,
+                      marginBottom: 12,
+                    }}
+                  >
+                    Pro Insight
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 15,
+                      color: C.text,
+                      lineHeight: 1.6,
+                      fontStyle: "italic",
+                      fontFamily: "'Georgia', serif",
+                    }}
+                  >
+                    "{FAMOUS_QUOTES[quoteIndex].text}"
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: C.textDim,
+                      marginTop: 8,
+                      textAlign: "right",
+                      fontWeight: 600,
+                    }}
+                  >
+                    — {FAMOUS_QUOTES[quoteIndex].author}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ width: "100%", position: "relative", zIndex: 10 }}>
+              {tab === "today" && (
+                <HomeScreen
+                  tasks={tasks}
+                  history={history}
+                  timers={timers}
+                  liveTime={liveTime}
+                  searchQuery={searchQuery}
+                  onToggle={toggleTask}
+                  onDelete={(id) => setDeleteConfirmId(id)}
+                  onStart={(id) => setTimers((p) => ({ ...p, [id]: Date.now() }))}
+                  onStop={(id) => {
+                    setTimers((p) => {
+                      const n = { ...p };
+                      delete n[id];
+                      return n;
+                    });
+                    setAccumulatedMs((p) => {
+                      const n = { ...p };
+                      delete n[id];
+                      return n;
+                    });
+                  }}
+                  onPause={(id) => {
+                    const start = timers[id];
+                    if (start) {
+                      const diff = Date.now() - start;
+                      setAccumulatedMs((p) => ({ ...p, [id]: (p[id] || 0) + diff }));
+                      setTimers((p) => {
+                        const n = { ...p };
+                        delete n[id];
+                        return n;
+                      });
+                    }
+                  }}
+                  onResume={(id) => setTimers((p) => ({ ...p, [id]: Date.now() }))}
+                  onReset={(id) => {
+                    setTimers((p) => {
+                      const n = { ...p };
+                      delete n[id];
+                      return n;
+                    });
+                    setAccumulatedMs((p) => {
+                      const n = { ...p };
+                      delete n[id];
+                      return n;
+                    });
+                  }}
+                  onReorder={onReorder}
+                  onToggleStar={async (id) => {
+                    const task = tasks.find((t) => t.id === id);
+                    if (task) {
+                      const { error } = await updateTask(id, { isStarred: !task.isStarred });
+                      if (error) showToast("Failed to update task. Please try again.");
+                    }
+                  }}
+                  isWearable={isWearable}
+                  isMobile={isMobile}
+                  quoteIndex={quoteIndex}
+                  quote={FAMOUS_QUOTES[quoteIndex]}
+                  userName={userName}
+                  setTab={navigateToTab}
+                  setShowSheet={setShowSheet}
+                  setEditTask={setEditTask}
+                />
+              )}
+              {tab === "calendar" && (
+                <CalendarHistory history={history} tasks={tasks} isMobile={isMobile} />
+              )}
+              {tab === "notes" && (
+                <NotesTab
+                  notes={notes}
+                  setNotes={setNotes}
+                  isMobile={isMobile}
+                  wid={wid}
+                  addNoteToDb={addNote}
+                  updateNoteInDb={updateNote}
+                  deleteNoteFromDb={deleteNote}
+                />
+              )}
+              {tab === "settings" && (
+                <SettingsView
+                  userName={userName}
+                  setUserName={setUserName}
+                  C={C}
+                  isDark={isDark}
+                  onSignOut={signOut}
+                  userEmail={user?.email}
+                  showToast={showToast}
+                />
+              )}
+            </div>
+
+            <AnimatePresence>
+              {deleteConfirmId && (
+                <ConfirmDialog
+                  title="Delete Task?"
+                  message="Are you sure you want to permanently delete this task? This action cannot be undone."
+                  onCancel={() => setDeleteConfirmId(null)}
+                  onConfirm={async () => {
+                    const id = deleteConfirmId;
+                    setDeleteConfirmId(null);
+                    const { error } = await deleteTask(id);
+                    if (error) {
+                      showToast("Failed to delete task. Please try again.");
+                    } else {
+                      showToast("Task deleted");
+                    }
+                  }}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {isMobile && (
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+              <MobileNav tab={tab} setTab={navigateToTab} C={C} />
+            </div>
+          )}
+
+          {showSheet && (
+            <TaskSheet
+              task={editTask}
+              onSave={async (v) => {
+                if (editTask) {
+                  const { error } = await updateTask(v.id, v);
                   if (error) showToast("Failed to update task. Please try again.");
+                } else {
+                  const newId = typeof crypto !== 'undefined' && crypto.randomUUID
+                    ? crypto.randomUUID()
+                    : `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                  const { error } = await addTask({ ...v, id: newId });
+                  if (error) showToast("Failed to add task. Please try again.");
                 }
+                setShowSheet(false);
               }}
+              onClose={() => setShowSheet(false)}
               isWearable={isWearable}
               isMobile={isMobile}
-              quoteIndex={quoteIndex}
-              quote={FAMOUS_QUOTES[quoteIndex]}
-              userName={userName}
-              setTab={navigateToTab}
-              setShowSheet={setShowSheet}
-              setEditTask={setEditTask}
             />
           )}
-          {tab === "calendar" && (
-            <CalendarHistory history={history} tasks={tasks} isMobile={isMobile} />
-          )}
-          {tab === "notes" && (
-            <NotesTab
-              notes={notes}
-              setNotes={setNotes}
-              isMobile={isMobile}
-              wid={wid}
-              addNoteToDb={addNote}
-              updateNoteInDb={updateNote}
-              deleteNoteFromDb={deleteNote}
-            />
-          )}
-          {tab === "analytics" && <Analytics history={history} tasks={tasks} />}
-        </div>
-
-        <AnimatePresence>
-          {deleteConfirmId && (
-            <ConfirmDialog
-              title="Delete Task?"
-              message="Are you sure you want to permanently delete this task? This action cannot be undone."
-              onCancel={() => setDeleteConfirmId(null)}
-              onConfirm={async () => {
-                const id = deleteConfirmId;
-                setDeleteConfirmId(null);
-                const { error } = await deleteTask(id);
-                if (error) {
-                  showToast("Failed to delete task. Please try again.");
-                } else {
-                  showToast("Task deleted");
-                }
-              }}
-            />
-          )}
-        </AnimatePresence>
-
-        {tab === "settings" && (
-          <SettingsView
-            userName={userName}
-            setUserName={setUserName}
-            C={C}
-            isDark={isDark}
-            onSignOut={signOut}
-            userEmail={user?.email}
-          />
-        )}
-      </div>
-
-      {isMobile && (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-          <MobileNav tab={tab} setTab={navigateToTab} C={C} />
         </div>
       )}
-
-      {showSheet && (
-        <TaskSheet
-          task={editTask}
-          onSave={async (v) => {
-            if (editTask) {
-              const { error } = await updateTask(v.id, v);
-              if (error) showToast("Failed to update task. Please try again.");
-            } else {
-              const newId = typeof crypto !== 'undefined' && crypto.randomUUID
-                ? crypto.randomUUID()
-                : `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-              const { error } = await addTask({ ...v, id: newId });
-              if (error) showToast("Failed to add task. Please try again.");
-            }
-            setShowSheet(false);
-          }}
-          onClose={() => setShowSheet(false)}
-          isWearable={isWearable}
-          isMobile={isMobile}
-        />
-      )}
-    </div>
+    </ErrorBoundary>
   );
 }
 
@@ -3822,63 +3885,76 @@ function MonthView({
                         gap: 3,
                       }}
                     >
-                      {isMobile ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: 3,
-                            flexWrap: "wrap",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {ents.slice(0, 4).map((_, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                width: 4,
-                                height: 4,
-                                borderRadius: "50%",
-                                background: C.accent,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <>
-                          {ents.slice(0, 3).map((e) => {
-                            const t = tasks.find((x) => x.id === e.id);
-                            if (!t) return null;
-                            return (
-                              <div
-                                key={e.id}
-                                style={{
-                                  fontSize: 9,
-                                  background: C.accentDim,
-                                  color: C.accent,
-                                  padding: "2px 6px",
-                                  borderRadius: 4,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                ★ {t.name}
-                              </div>
-                            );
-                          })}
-                          {ents.length > 3 && (
+                      {(() => {
+                        const dayTasks = tasks.filter(t => !history[dk]?.some(h => h.id === t.id) && isTaskOnDate(t, dk));
+                        const allItems = [
+                          ...ents.map(e => ({ ...e, type: 'history' })),
+                          ...dayTasks.map(t => ({ ...t, type: 'task' }))
+                        ];
+
+                        if (isMobile) {
+                          return (
                             <div
                               style={{
-                                fontSize: 9,
-                                color: C.textDim,
-                                marginLeft: 4,
+                                display: "flex",
+                                gap: 3,
+                                flexWrap: "wrap",
+                                justifyContent: "center",
                               }}
                             >
-                              + {ents.length - 3} more
+                              {allItems.slice(0, 4).map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  style={{
+                                    width: 4,
+                                    height: 4,
+                                    borderRadius: "50%",
+                                    background: item.type === 'history' ? C.accent : 'rgba(209,62,50,0.4)',
+                                  }}
+                                />
+                              ))}
                             </div>
-                          )}
-                        </>
-                      )}
+                          );
+                        }
+
+                        return (
+                          <>
+                            {allItems.slice(0, 3).map((item) => {
+                              const t = item.type === 'task' ? item : tasks.find((x) => x.id === item.id);
+                              if (!t) return null;
+                              return (
+                                <div
+                                  key={item.id}
+                                  style={{
+                                    fontSize: 9,
+                                    background: item.type === 'history' ? C.accentDim : "rgba(209,62,50,0.08)",
+                                    color: item.type === 'history' ? C.accent : C.text,
+                                    padding: "2px 6px",
+                                    borderRadius: 4,
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    border: item.type === 'task' ? `1px dashed ${C.border}` : 'none'
+                                  }}
+                                >
+                                  {item.type === 'history' ? '★' : '○'} {t.name}
+                                </div>
+                              );
+                            })}
+                            {allItems.length > 3 && (
+                              <div
+                                style={{
+                                  fontSize: 9,
+                                  color: C.textDim,
+                                  marginLeft: 4,
+                                }}
+                              >
+                                + {allItems.length - 3} more
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </>
                 )}
@@ -3988,7 +4064,7 @@ function WeekView({
 }
 
 /* DAY VIEW */
-function DayView({ selDay, history, tasks, C, fmtDate, go, pad }) {
+function DayView({ selDay, history, tasks, C, fmtDate, go, pad, isMobile }) {
   const entries = history[selDay] || [];
   const dateObj = fmtDate(selDay);
   const y = dateObj.getFullYear();
@@ -4072,33 +4148,61 @@ function DayView({ selDay, history, tasks, C, fmtDate, go, pad }) {
                   {label}
                 </div>
                 <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
-                  {entries.filter(e => {
-                    const hr = e.completedAt ? new Date(e.completedAt).getHours() : -1;
-                    return hr === h;
-                  }).map((entry, idx) => {
-                    const task = (tasks || []).find(t => t.id === entry.id);
-                    const time = entry.completedAt ? new Date(entry.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-                    return (
-                      <div
-                        key={entry.id || idx}
-                        style={{
-                          position: idx === 0 ? "relative" : "relative",
-                          marginTop: idx > 0 ? 4 : 4,
-                          left: 4,
-                          right: 4,
-                          background: C.accentDim,
-                          borderLeft: `4px solid ${C.accent}`,
-                          borderRadius: 6,
-                          padding: "8px 10px",
-                        }}
-                      >
-                        <div style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>
-                          {task ? task.name : `Task #${entry.id}`}
+                  {(() => {
+                    const hEnts = entries.filter(e => {
+                      const hr = e.completedAt ? new Date(e.completedAt).getHours() : -1;
+                      return hr === h;
+                    }).map(e => ({ ...e, type: 'history' }));
+
+                    const sTasks = tasks.filter(t => {
+                      if (!isTaskOnDate(t, selDay)) return false;
+                      if (!t.reminderAt) return false;
+                      const thr = parseInt(t.reminderAt.split('T')[1].split(':')[0]);
+                      return thr === h;
+                    }).map(t => ({ ...t, type: 'task' }));
+
+                    const all = [...hEnts, ...sTasks];
+
+                    return all.map((item, idx) => {
+                      const task = item.type === 'task' ? item : (tasks || []).find(t => t.id === item.id);
+                      const isHist = item.type === 'history';
+                      let time = '';
+                      if (isHist) {
+                        time = item.completedAt ? new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                      } else if (item.reminderAt && item.reminderAt.includes('T')) {
+                        // Parse as local time string to avoid UTC shift
+                        const [, tPart] = item.reminderAt.split('T');
+                        const [rh, rm] = tPart.split(':');
+                        const localD = new Date();
+                        localD.setHours(parseInt(rh), parseInt(rm));
+                        time = localD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      }
+
+                      return (
+                        <div
+                          key={item.id || idx}
+                          style={{
+                            position: "relative",
+                            marginTop: 4,
+                            marginBottom: 4,
+                            left: 4,
+                            right: 4,
+                            background: isHist ? C.accentDim : "rgba(209,62,50,0.05)",
+                            borderLeft: `4px solid ${isHist ? C.accent : 'rgba(209,62,50,0.4)'}`,
+                            borderRadius: 6,
+                            padding: "8px 10px",
+                            border: !isHist ? `1px dashed ${C.border}` : 'none',
+                            borderLeftWidth: 4,
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 700, color: isHist ? C.accent : C.text }}>
+                            {task ? task.name : `Task #${item.id}`}
+                          </div>
+                          {time && <div style={{ fontSize: 11, color: isHist ? C.accent : C.textDim, opacity: 0.7 }}>{isHist ? 'Done at ' : 'Reminder: '}{time}</div>}
                         </div>
-                        {time && <div style={{ fontSize: 11, color: C.accent, opacity: 0.7 }}>{time}</div>}
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             );
@@ -4113,7 +4217,7 @@ function DayView({ selDay, history, tasks, C, fmtDate, go, pad }) {
           flexShrink: 0,
           borderLeft: `1px solid ${C.border}`,
           paddingLeft: 20,
-          display: window.innerWidth < 680 ? "none" : "block",
+          display: isMobile ? "none" : "block",
         }}
       >
         <div style={{ marginBottom: 24 }}>
@@ -4349,6 +4453,7 @@ export function CalendarHistory({ history, tasks, isMobile }) {
             fmtDate={fmtDate}
             go={go}
             pad={pad}
+            isMobile={isMobile}
           />
         )}
       </div>
@@ -5570,13 +5675,13 @@ function ScribbleCanvas({
 /* ══════════════════════════════════════════
    SETTINGS VIEW
 ══════════════════════════════════════════ */
-function SettingsView({ userName, setUserName, C, onSignOut, userEmail }) {
+function SettingsView({ userName, setUserName, C, onSignOut, userEmail, showToast }) {
   const [name, setName] = useState(userName);
 
   const save = async () => {
-    if (!name.trim()) return alert("Name cannot be empty");
+    if (!name.trim()) { if (showToast) showToast("Name cannot be empty", "error"); return; }
     await setUserName(name.trim().toUpperCase());
-    alert("Profile updated!");
+    if (showToast) showToast("Profile updated!");
   };
 
   return (

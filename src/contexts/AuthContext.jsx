@@ -8,9 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('[Auth] Fetching initial session...');
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log('[Auth] Initial session data:', session, error);
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -18,15 +16,13 @@ export function AuthProvider({ children }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[Auth] Auth state changed:', event, session);
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       // Clean the OAuth hash fragment from the URL after a successful OAuth redirect
       // so the browser back button never returns to the raw #access_token=... URL.
       if (window.location.hash && window.location.hash.includes('access_token')) {
-        console.log('[Auth] Cleaning OAuth hash from URL');
         window.history.replaceState(null, '', window.location.pathname);
       }
     });
