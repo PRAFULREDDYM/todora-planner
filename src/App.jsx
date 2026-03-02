@@ -3521,7 +3521,7 @@ function AppContent() {
                     const task = tasks.find((t) => t.id === id);
                     if (task) {
                       const { error } = await updateTask(id, { isStarred: !task.isStarred });
-                      if (error) showToast("Failed to update task. Please try again.");
+                      if (error) showToast(`Update failed: ${error.message || 'Unknown error'}`, 'error');
                     }
                   }}
                   isWearable={isWearable}
@@ -3594,7 +3594,7 @@ function AppContent() {
               onSave={async (v) => {
                 if (editTask) {
                   const { error } = await updateTask(v.id, v);
-                  if (error) showToast("Failed to update task. Please try again.");
+                  if (error) showToast(`Update failed: ${error.message || 'Unknown error'}`, 'error');
                 } else {
                   const newId = typeof crypto !== 'undefined' && crypto.randomUUID
                     ? crypto.randomUUID()

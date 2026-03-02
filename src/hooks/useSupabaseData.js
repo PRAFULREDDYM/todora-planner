@@ -155,6 +155,11 @@ export function useTasks() {
         .eq('id', taskId)
         .eq('user_id', user.id);
 
+      if (error) {
+        console.error('[updateTask] Supabase error:', error);
+        console.error('[updateTask] taskId:', taskId, 'userId:', user.id, 'dbUpdates:', dbUpdates);
+      }
+
       if (!error) {
         setTasks((prev) =>
           prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
