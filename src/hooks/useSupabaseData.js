@@ -139,13 +139,13 @@ export function useTasks() {
       const dbUpdates = {};
       if ('name' in updates) dbUpdates.name = updates.name;
       if ('description' in updates) dbUpdates.description = updates.description;
-      if ('recurrence' in updates) dbUpdates.recurrence = updates.recurrence;
-      if ('goalMin' in updates) dbUpdates.goal_min = updates.goalMin;
-      if ('reminderAt' in updates) dbUpdates.reminder_at = updates.reminderAt;
-      if ('priority' in updates) dbUpdates.priority = updates.priority;
-      if ('category' in updates) dbUpdates.category = updates.category;
-      if ('deadline' in updates) dbUpdates.deadline = updates.deadline;
-      if ('image' in updates) dbUpdates.image = updates.image;
+      if ('recurrence' in updates) dbUpdates.recurrence = updates.recurrence || 'once';
+      if ('goalMin' in updates) dbUpdates.goal_min = updates.goalMin || 0;
+      if ('reminderAt' in updates) dbUpdates.reminder_at = updates.reminderAt || null;
+      if ('priority' in updates) dbUpdates.priority = updates.priority || 'mid';
+      if ('category' in updates) dbUpdates.category = updates.category || 'Quick Win';
+      if ('deadline' in updates) dbUpdates.deadline = updates.deadline || null;
+      if ('image' in updates) dbUpdates.image = updates.image || null;
       if ('order' in updates) dbUpdates.sort_order = updates.order;
       if ('isStarred' in updates) dbUpdates.is_starred = updates.isStarred;
 
