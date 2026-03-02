@@ -3612,7 +3612,7 @@ function AppContent() {
 
           {isMobile && (
             <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-              <MobileNav tab={tab} setTab={navigateToTab} C={C} />
+              <Navigation tab={tab} setTab={navigateToTab} isMobile={true} C={C} />
             </div>
           )}
 
