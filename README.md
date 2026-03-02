@@ -1,16 +1,69 @@
-# React + Vite
+# Todora Planner
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Todora is a premium daily momentum planner and habit tracker designed to help you reclaim your rhythm and focus on what matters most. Built with a modern, glassmorphic aesthetic, it offers a seamless experience across desktop and mobile devices.
 
-Currently, two official plugins are available:
+![Todora Logo](/logo.jpg)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+- **Dynamic Task Management**: Create, edit, and organize tasks with ease. Support for recurring tasks (daily, weekly, weekdays, weekends).
+- **Focus Mode**: A minimalist interface to help you concentrate on a single task at a time.
+- **Note-Taking with Drawing**: Integrated notes editor with rich text support and a drawing canvas for quick sketches.
+- **Habit Tracking**: Monitor your progress and build consistent routines.
+- **Premium Design**: Sleek dark mode, smooth animations (powered by Framer Motion), and a responsive layout.
+- **Secure Authentication**: Built-in support for email/password and Google Sign-In via Supabase.
+- **PWA Support**: Install Todora as an app on your device for offline access and a native-like experience.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- **Frontend**: React 19, Vite, Framer Motion
+- **Backend & Auth**: Supabase
+- **Styling**: Vanilla CSS with modern CSS features
+- **PWA**: `vite-plugin-pwa`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm or yarn
+- A Supabase project
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/todora-planner.git
+   cd todora-planner
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Set up environment variables:
+   Create a `.env.local` file in the root directory and add your Supabase credentials:
+   ```env
+   VITE_SUPABASE_URL=your-supabase-url
+   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+## Deployment
+
+The project is ready for deployment on platforms like Vercel, Netlify, or GitHub Pages.
+
+1. Build the project:
+   ```bash
+   npm run build
+   ```
+2. Deploy the `dist/` directory to your chosen hosting provider.
+
+## License
+
+This project is licensed under the MIT License.
