@@ -1,88 +1,172 @@
-# Todora Planner
+# 🖋️ Todora Planner
 
-Todora is a premium daily momentum planner and habit tracker designed to help you reclaim your rhythm and focus on what matters most. Built with a modern, glassmorphic aesthetic, it offers a seamless experience across desktop and mobile devices.
+Todora is a premium, all-in-one productivity suite designed to help you **reclaim your rhythm**. It combines intelligent task management, focused execution, and creative note-taking into a single, cohesive experience. Built with a modern glassmorphic aesthetic and powered by robust cloud synchronization, Todora is your ultimate companion for personal and professional growth.
 
-![Todora Logo](/logo.jpg)
+![Todora Banner](/logo.jpg)
 
-## Features
+## 🌟 Why Todora?
 
-- **Dynamic Task Management**: Create, edit, and organize tasks with ease. Support for recurring tasks (daily, weekly, weekdays, weekends).
-- **Focus Mode**: A minimalist interface to help you concentrate on a single task at a time.
-- **Note-Taking with Drawing**: Integrated notes editor with rich text support and a drawing canvas for quick sketches.
-- **Habit Tracking**: Monitor your progress and build consistent routines.
-- **Premium Design**: Sleek dark mode, smooth animations (powered by Framer Motion), and a responsive layout.
-- **Secure Authentication**: Built-in support for email/password and Google Sign-In via Supabase.
-- **PWA Support**: Install Todora as an app on your device for offline access and a native-like experience.
+In a world full of distractions, Todora stands out by prioritizing **Focus** and **Simplicity**. Whether you're tracking daily habits, sketching out new ideas, or managing complex project deadlines, Todora provides the tools you need without the clutter you don't.
 
-## Tech Stack
+---
 
-- **Frontend**: React 19, Vite, Framer Motion
-- **Backend & Auth**: Supabase
-- **Styling**: Vanilla CSS with modern CSS features
-- **PWA**: `vite-plugin-pwa`
+## 🛠️ Key Features
 
-## Getting Started
+### ✅ Intelligent Task Management
+*   **Dynamic Recurrence**: Set tasks to repeat daily, weekly, on weekdays, or weekends.
+*   **Smart Categorization**: Organise tasks into categories like "Quick Win", "Deep Work", or "Personal".
+*   **Priority Levels**: Visual cues for high, mid, and low priority tasks.
+*   **Custom Reminders & Deadlines**: Never miss a beat with integrated time tracking.
+*   **Reorderable Lists**: Intuitive drag-and-drop task prioritization.
+
+### 🎯 Focus & Flow
+*   **Focus Mode**: A dedicated minimalist view that centers your attention on a single "Starred" or top-priority task.
+*   **Integrated Timer**: Track exactly how much time you spend on each task with pause, resume, and reset controls.
+
+### 🎨 Creative Junction (Notes & Drawing)
+*   **Rich Text Editor**: Capture thoughts with full formatting support.
+*   **Infinite Sketchpad**: A built-in drawing canvas with eraser mode and one-click clearing.
+*   **Image Support**: Attach images to your notes for visual context.
+*   **PDF Export**: Convert your notes into professional PDF documents instantly.
+
+### 📊 Insights & Analytics
+*   **Visual History**: Track your daily wins through an interactive calendar.
+*   **Performance Metrics**: Analyze your productivity trends over time.
+*   **Multi-View Calendar**: Switch between Day, Week, Month, and Year views to see the big picture.
+
+### ☁️ Seamless Cloud Sync
+*   **Supabase Integration**: Your data is securely synced across all your devices in real-time.
+*   **Local Migration**: Upgrading from a local-only setup? Todora handles the migration to the cloud automatically.
+
+### 📱 PWA (Progressive Web App)
+*   **Installable**: Add Todora to your home screen for a native app experience.
+*   **Offline Ready**: Access your tasks and notes even without an internet connection.
+
+---
+
+## 🚀 Tech Stack
+
+*   **Frontend**: React 19, Vite
+*   **Animations**: Framer Motion
+*   **Database & Auth**: Supabase
+*   **Styling**: Vanilla CSS (Modern CSS Variables & Glassmorphism)
+*   **PDF Generation**: jsPDF
+*   **PWA**: `vite-plugin-pwa`
+
+---
+
+## 📦 Getting Started
 
 ### Prerequisites
+*   Node.js (v18+)
+*   npm or yarn
+*   A Supabase Project
 
-- Node.js (v18 or higher recommended)
-- npm or yarn
-- A Supabase project
+### 1. Installation
+```bash
+git clone https://github.com/PRAFULREDDYM/todora-planner.git
+cd todora-planner
+npm install
+```
 
-### Installation
+### 2. Environment Variables
+Create a `.env.local` file in the root:
+```env
+VITE_SUPABASE_URL=your-project-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/todora-planner.git
-   cd todora-planner
-   ```
+### 3. Supabase Schema Setup (SQL)
+Run the following commands in your Supabase SQL Editor to create the required tables:
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+#### Profiles Table
+```sql
+create table profiles (
+  id uuid references auth.users on delete cascade primary key,
+  user_name text,
+  is_dark boolean default false,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+```
 
-3. Set up environment variables:
-   Create a `.env.local` file in the root directory and add your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
+#### Tasks Table
+```sql
+create table tasks (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade,
+  name text not null,
+  description text,
+  recurrence text default 'once',
+  goal_min integer default 0,
+  reminder_at text,
+  priority text default 'mid',
+  category text default 'Quick Win',
+  deadline text,
+  image text,
+  sort_order integer default 0,
+  is_starred boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+```
 
-4. Run the development server:
-   ```bash
-   npm run dev
-   ```
+#### Notes Table
+```sql
+create table notes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade,
+  title text,
+  content text,
+  drawing text,
+  image text,
+  note_date text,
+  is_starred boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+```
 
-## Deployment
+#### Task History Table
+```sql
+create table task_history (
+  id bigserial primary key,
+  user_id uuid references auth.users on delete cascade,
+  task_id uuid,
+  task_name text,
+  completion_date text,
+  started_at timestamp with time zone,
+  completed_at timestamp with time zone
+);
+```
 
-Todora is designed to be easily deployed on **Vercel**.
+---
 
-### Deploy to Vercel
+## 🏗️ Production Build & Deployment
 
-1. **Push to GitHub/GitLab/Bitbucket**:
-   Ensure your code is pushed to a remote repository.
-
-2. **Connect to Vercel**:
-   - Go to [vercel.com](https://vercel.com) and import your repository.
-   - Vercel will automatically detect the Vite setup.
-
-3. **Configure Environment Variables**:
-   In the Vercel project settings, add the following environment variables:
-   - `VITE_SUPABASE_URL`: Your Supabase Project URL.
-   - `VITE_SUPABASE_ANON_KEY`: Your Supabase Anon Key.
-
-4. **Deploy**:
-   Click **Deploy**. Vercel will build the project and provide you with a live URL.
-
-### Manual Build
-
-If you prefer to build manually:
+### Build
 ```bash
 npm run build
 ```
-The production-ready files will be in the `dist/` directory.
 
-## License
+### Vercel Deployment
+1.  Push your code to GitHub.
+2.  Import the repository into Vercel.
+3.  Add the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to **Project Settings > Environment Variables**.
+4.  Add your Vercel URL to your **Supabase Dashboard > Auth > URL Configuration > Redirect URLs**.
 
-This project is licensed under the MIT License.
+---
+
+## 🤝 How to Contribute
+
+We welcome contributions! If you'd like to improve Todora, feel free to:
+1.  Fork the repository.
+2.  Create a feature branch (`git checkout -b feature/AmazingFeature`).
+3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
+4.  Push to the branch (`git push origin feature/AmazingFeature`).
+5.  Open a Pull Request.
+
+---
+
+## 📄 License
+Distributed under the **MIT License**. See `LICENSE` for more information.
+
+---
+*Created with ❤️ by the Todora Team.*
