@@ -56,13 +56,32 @@ Todora is a premium daily momentum planner and habit tracker designed to help yo
 
 ## Deployment
 
-The project is ready for deployment on platforms like Vercel, Netlify, or GitHub Pages.
+Todora is designed to be easily deployed on **Vercel**.
 
-1. Build the project:
-   ```bash
-   npm run build
-   ```
-2. Deploy the `dist/` directory to your chosen hosting provider.
+### Deploy to Vercel
+
+1. **Push to GitHub/GitLab/Bitbucket**:
+   Ensure your code is pushed to a remote repository.
+
+2. **Connect to Vercel**:
+   - Go to [vercel.com](https://vercel.com) and import your repository.
+   - Vercel will automatically detect the Vite setup.
+
+3. **Configure Environment Variables**:
+   In the Vercel project settings, add the following environment variables:
+   - `VITE_SUPABASE_URL`: Your Supabase Project URL.
+   - `VITE_SUPABASE_ANON_KEY`: Your Supabase Anon Key.
+
+4. **Deploy**:
+   Click **Deploy**. Vercel will build the project and provide you with a live URL.
+
+### Manual Build
+
+If you prefer to build manually:
+```bash
+npm run build
+```
+The production-ready files will be in the `dist/` directory.
 
 ## License
 
