@@ -3576,6 +3576,9 @@ function AppContent() {
                   deleteNoteFromDb={deleteNote}
                 />
               )}
+              {tab === "stats" && (
+                <Analytics history={history} tasks={tasks} />
+              )}
               {tab === "settings" && (
                 <SettingsView
                   userName={userName}
