@@ -10,48 +10,74 @@ In a world full of distractions, Todora stands out by prioritizing **Focus** and
 
 ---
 
+## ✨ Live Demo
+
+🔗 **[todora-planner.vercel.app](https://todora-planner.vercel.app)**
+
+---
+
 ## 🛠️ Key Features
 
 ### ✅ Intelligent Task Management
 *   **Dynamic Recurrence**: Set tasks to repeat daily, weekly, on weekdays, or weekends.
-*   **Smart Categorization**: Organise tasks into categories like "Quick Win", "Deep Work", or "Personal".
+*   **Smart Categorization**: Organise tasks into "Quick Win", "Deep Work", or "Creative".
 *   **Priority Levels**: Visual cues for high, mid, and low priority tasks.
-*   **Custom Reminders & Deadlines**: Never miss a beat with integrated time tracking.
+*   **Custom Reminders & Deadlines**: Set date/time reminders with a drum picker UI. Remove reminders anytime.
 *   **Reorderable Lists**: Intuitive drag-and-drop task prioritization.
+*   **Batch Operations**: Select multiple tasks for bulk delete or complete.
 
 ### 🎯 Focus & Flow
-*   **Focus Mode**: A dedicated minimalist view that centers your attention on a single "Starred" or top-priority task.
-*   **Integrated Timer**: Track exactly how much time you spend on each task with pause, resume, and reset controls.
+*   **Focus Mode**: A minimalist view that centers your attention on a single starred or top-priority task.
+*   **Full Timer Controls**: Start → Pause → Resume → Reset. Time accumulates across pause/resume cycles until you reset or complete the task.
+*   **Goal Duration**: Set target time for tasks and get notified when you hit your goal.
 
 ### 🎨 Creative Junction (Notes & Drawing)
-*   **Rich Text Editor**: Capture thoughts with full formatting support.
-*   **Infinite Sketchpad**: A built-in drawing canvas with eraser mode and one-click clearing.
-*   **Image Support**: Attach images to your notes for visual context.
-*   **PDF Export**: Convert your notes into professional PDF documents instantly.
+*   **Rich Text Editor**: Capture thoughts with bold, italic, underline, lists, and links.
+*   **Infinite Sketchpad**: Built-in drawing canvas with pen, highlighter, and eraser tools.
+*   **Image Support**: Paste or attach images to your notes.
+*   **PDF Export**: Convert notes into PDF documents with one click.
+*   **Share & Copy**: Native share and clipboard copy.
 
 ### 📊 Insights & Analytics
-*   **Visual History**: Track your daily wins through an interactive calendar.
-*   **Performance Metrics**: Analyze your productivity trends over time.
-*   **Multi-View Calendar**: Switch between Day, Week, Month, and Year views to see the big picture.
+*   **Streak Tracking**: Current streak and best streak counters.
+*   **Performance Heatmap**: Consistency calendar showing daily completion rates.
+*   **Engagement Trend**: 21/40-day bar chart of daily activity (responsive on mobile/desktop).
+*   **Multi-View Calendar**: Day, Week, Month, and Year views with task dots and completion pills.
+
+### 🔐 Authentication
+*   **Email/Password**: Sign up with email confirmation.
+*   **Google OAuth**: One-tap Google sign-in.
+*   **Password Reset**: In-app password reset flow.
+*   **Persistent Sessions**: Auto-refresh tokens with secure session handling.
 
 ### ☁️ Seamless Cloud Sync
-*   **Supabase Integration**: Your data is securely synced across all your devices in real-time.
-*   **Local Migration**: Upgrading from a local-only setup? Todora handles the migration to the cloud automatically.
+*   **Supabase Integration**: Data synced across all devices in real-time.
+*   **Row-Level Security**: Every table enforces `auth.uid() = user_id`.
+*   **Local Migration**: Automatic migration from local storage to cloud on first sign-in.
 
-### 📱 PWA (Progressive Web App)
-*   **Installable**: Add Todora to your home screen for a native app experience.
-*   **Offline Ready**: Access your tasks and notes even without an internet connection.
+### 📱 Progressive Web App (PWA)
+*   **Installable**: Add to home screen for a native app experience.
+*   **Service Worker**: Workbox-powered offline caching.
+*   **Safe Area Support**: Optimized for iPhone Dynamic Island and notched devices.
+
+### 🌓 Theme
+*   **Dark / Light Mode**: Smooth crossfade theme transitions.
+*   **Persistent Preference**: Theme choice synced to your profile.
 
 ---
 
 ## 🚀 Tech Stack
 
-*   **Frontend**: React 19, Vite
-*   **Animations**: Framer Motion
-*   **Database & Auth**: Supabase
-*   **Styling**: Vanilla CSS (Modern CSS Variables & Glassmorphism)
-*   **PDF Generation**: jsPDF
-*   **PWA**: `vite-plugin-pwa`
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Frontend | React 19 | UI framework |
+| Build | Vite 7 | Dev server, HMR, bundling |
+| Animation | Framer Motion | Page transitions, drag-to-reorder |
+| Backend | Supabase (PostgreSQL) | Auth, database, RLS |
+| PDF | jsPDF | Client-side PDF export |
+| PWA | vite-plugin-pwa | Service worker, installable app |
+| Error Handling | react-error-boundary | Graceful crash recovery |
+| Hosting | Vercel | CI/CD, CDN |
 
 ---
 
@@ -59,10 +85,10 @@ In a world full of distractions, Todora stands out by prioritizing **Focus** and
 
 ### Prerequisites
 *   Node.js (v18+)
-*   npm or yarn
-*   A Supabase Project
+*   npm
+*   A [Supabase](https://supabase.com) project
 
-### 1. Installation
+### 1. Clone & Install
 ```bash
 git clone https://github.com/PRAFULREDDYM/todora-planner.git
 cd todora-planner
@@ -76,90 +102,84 @@ VITE_SUPABASE_URL=your-project-url
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### 3. Supabase Schema Setup (SQL)
-Run the following commands in your Supabase SQL Editor to create the required tables:
-
-#### Profiles Table
-```sql
-create table profiles (
-  id uuid references auth.users on delete cascade primary key,
-  user_name text,
-  is_dark boolean default false,
-  updated_at timestamp with time zone default timezone('utc'::text, now())
-);
+### 3. Database Setup
+Run the included schema file in your **Supabase SQL Editor** (Database > SQL Editor):
+```bash
+# The full schema is in:
+supabase-schema.sql
 ```
+This creates all 4 tables (`profiles`, `tasks`, `notes`, `task_history`), RLS policies, indexes, and triggers.
 
-#### Tasks Table
-```sql
-create table tasks (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade,
-  name text not null,
-  description text,
-  recurrence text default 'once',
-  goal_min integer default 0,
-  reminder_at text,
-  priority text default 'mid',
-  category text default 'Quick Win',
-  deadline text,
-  image text,
-  sort_order integer default 0,
-  is_starred boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
-```
+### 4. Supabase Auth Configuration
+1. Enable **Email** provider in Supabase Auth settings.
+2. Enable **Google** provider and add your OAuth client ID/secret.
+3. Add your app URL to **Redirect URLs** (e.g., `http://localhost:5173` and your production URL).
 
-#### Notes Table
-```sql
-create table notes (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade,
-  title text,
-  content text,
-  drawing text,
-  image text,
-  note_date text,
-  is_starred boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+### 5. Run Locally
+```bash
+npm run dev
 ```
-
-#### Task History Table
-```sql
-create table task_history (
-  id bigserial primary key,
-  user_id uuid references auth.users on delete cascade,
-  task_id uuid,
-  task_name text,
-  completion_date text,
-  started_at timestamp with time zone,
-  completed_at timestamp with time zone
-);
-```
+Open [http://localhost:5173](http://localhost:5173).
 
 ---
 
-## 🏗️ Production Build & Deployment
+## 🏗️ Production Deployment
 
 ### Build
 ```bash
-npm run build
+npm run build    # Output: dist/
+npm run preview  # Preview production build locally
 ```
 
 ### Vercel Deployment
 1.  Push your code to GitHub.
-2.  Import the repository into Vercel.
-3.  Add the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to **Project Settings > Environment Variables**.
-4.  Add your Vercel URL to your **Supabase Dashboard > Auth > URL Configuration > Redirect URLs**.
+2.  Import the repository into [Vercel](https://vercel.com).
+3.  Set **Build Command** to `npm run build` and **Output Directory** to `dist`.
+4.  Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to **Project Settings > Environment Variables**.
+5.  Add your Vercel URL to **Supabase Dashboard > Auth > URL Configuration > Redirect URLs**.
+
+### Netlify Deployment
+Same as Vercel, plus a `public/_redirects` file is already included for SPA routing.
 
 ---
 
-## 🤝 How to Contribute
+## 📁 Project Structure
 
-We welcome contributions! If you'd like to improve Todora, feel free to:
+```
+todora-planner/
+├── public/
+│   ├── _redirects          # Netlify SPA routing
+│   ├── logo.jpg            # App logo
+│   └── pwa-*.png           # PWA icons
+├── src/
+│   ├── App.jsx             # Core application
+│   ├── main.jsx            # Entry point + ErrorBoundary
+│   ├── index.css           # Global styles + safe areas
+│   ├── components/
+│   │   └── Auth.jsx        # Authentication UI
+│   ├── contexts/
+│   │   ├── AuthContext.jsx  # Auth provider
+│   │   └── AuthContextInstance.js
+│   ├── hooks/
+│   │   ├── useAuth.js      # Auth hook
+│   │   └── useSupabaseData.js  # CRUD hooks
+│   └── lib/
+│       └── supabase.js     # Supabase client
+├── supabase-schema.sql     # Complete DB schema
+├── vercel.json             # Vercel SPA rewrites
+├── vite.config.js          # Vite + PWA config
+└── package.json
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! To get started:
+
 1.  Fork the repository.
 2.  Create a feature branch (`git checkout -b feature/AmazingFeature`).
-3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
+3.  Commit your changes (`git commit -m 'Add AmazingFeature'`).
 4.  Push to the branch (`git push origin feature/AmazingFeature`).
 5.  Open a Pull Request.
 
@@ -169,4 +189,5 @@ We welcome contributions! If you'd like to improve Todora, feel free to:
 Distributed under the **MIT License**. See `LICENSE` for more information.
 
 ---
-*Created with ❤️ by the Todora Team.*
+
+*Built with ❤️ by Praful Reddy*
