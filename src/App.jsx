@@ -3620,6 +3620,11 @@ function AppContent() {
                       delete n[id];
                       return n;
                     });
+                    setLiveTime((p) => {
+                      const n = { ...p };
+                      delete n[id];
+                      return n;
+                    });
                   }}
                   onReorder={onReorder}
                   onToggleStar={async (id) => {
