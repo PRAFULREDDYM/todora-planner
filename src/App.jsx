@@ -1382,11 +1382,10 @@ function TaskCard({
   const [expanded, setExpanded] = useState(false);
   const cardRef = useRef(null);
   const isDone = !!entry;
-  const liveMs = isRunning
-    ? elapsed
-    : entry
-      ? entry.completedAt - entry.startedAt
-      : 0;
+  const liveMs = isDone
+    ? entry.completedAt - entry.startedAt
+    : elapsed || 0;
+  const isPaused = !isRunning && liveMs > 0 && !isDone;
 
   useEffect(() => {
     if (!expanded) return;
@@ -1703,29 +1702,105 @@ function TaskCard({
           <div
             style={{
               display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
+              gap: 6,
+              alignItems: "center",
             }}
           >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                isRunning ? onStop() : onStart();
-              }}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: isRunning ? C.danger : C.accent,
-                color: "#FFF",
-                border: "none",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "0.2s",
-              }}
-            >
-              {isRunning ? "Stop" : "Start"}
-            </button>
+            {isRunning ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPause();
+                }}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  background: C.warn,
+                  color: "#FFF",
+                  border: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+                Pause
+              </button>
+            ) : isPaused ? (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onResume();
+                  }}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    background: C.accent,
+                    color: "#FFF",
+                    border: "none",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Resume
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReset();
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    background: C.surfaceHi,
+                    color: C.textMid,
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "0.2s",
+                  }}
+                >
+                  Reset
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStart();
+                }}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  background: C.accent,
+                  color: "#FFF",
+                  border: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "0.2s",
+                }}
+              >
+                Start
+              </button>
+            )}
           </div>
         )}
       </div>
